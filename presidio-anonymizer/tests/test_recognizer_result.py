@@ -284,7 +284,44 @@ def test_given_negative_start_or_endpoint_then_we_fail(start, end):
     ):
         create_recognizer_result("entity", 0, start, end)
 
-
+@pytest.mark.parametrize(
+    # fmt: off
+    "start1, end1, start2, end2, expected_overlap",
+    [
+        # No overlap cases
+        (0, 5, 6, 10, 0),      # first ends before second starts
+        (6, 10, 0, 5, 0),      # second ends before first starts
+        (0, 5, 5, 10, 0),      # end of first equals start of second
+        (5, 10, 0, 5, 0),      # end of second equals start of first
+        
+        # Full overlap cases
+        (0, 10, 0, 10, 10),    # identical ranges
+        (0, 10, 2, 8, 6),      # second completely inside first
+        (2, 8, 0, 10, 6),      # first completely inside second
+        
+        # Partial overlaps
+        (0, 10, 5, 15, 5),     # first ends in middle of second
+        (5, 15, 0, 10, 5),     # second ends in middle of first
+        
+        # Complete containment
+        (0, 10, 3, 7, 4),      # second completely contained in first
+        (3, 7, 0, 10, 4),      # first completely contained in second
+        
+        # Edge cases with single character
+        (5, 6, 5, 6, 1),       # single character overlap
+        (5, 6, 6, 7, 0),       # adjacent single characters
+    ],
+    # fmt: on
+)
+def test_intersects(start1, end1, start2, end2, expected_overlap):
+    """Test the intersects method with various range scenarios."""
+    first = create_recognizer_result("entity", 0.8, start1, end1)
+    second = create_recognizer_result("entity", 0.8, start2, end2)
+    
+    # Test both directions (intersects should be commutative)
+    assert first.intersects(second) == expected_overlap
+    assert second.intersects(first) == expected_overlap
+    
 def create_recognizer_result(entity_type: str, score: float, start: int, end: int):
     data = {"entity_type": entity_type, "score": score, "start": start, "end": end}
     return RecognizerResult.from_json(data)
